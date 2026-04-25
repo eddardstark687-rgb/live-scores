@@ -40,7 +40,7 @@ https://github.com/eddardstark687-rgb/live-scores/releases/download/v0.1/LiveSco
 ## 🚀 Getting Started
 
 ### 1. Prerequisites
-- Android Studio Ladybug or later.
+- Android Studio Panda 4.
 - An API Key from [API-Sports (Football)](https://dashboard.api-football.com/).
 
 ### 2. Build & Run
