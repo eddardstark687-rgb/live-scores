@@ -40,18 +40,7 @@
 - Android Studio Ladybug or later.
 - An API Key from [API-Sports (Football)](https://dashboard.api-football.com/).
 
-### 2. Configuration
-Open `app/src/main/java/com/pitchpulse/core/network/RetrofitClient.kt` and add your API keys to the `API_KEYS` list:
-
-```kotlin
-private val API_KEYS = listOf(
-    "PRIMARY_KEY",
-    "BACKUP_KEY_1",
-    "BACKUP_KEY_2"
-)
-```
-
-### 3. Build & Run
+### 2. Build & Run
 Clone the repository and build the project in Android Studio.
 
 ---
