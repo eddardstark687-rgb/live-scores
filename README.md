@@ -9,6 +9,9 @@
 
 ---
 
+## ⬇️Download the App here 👇
+https://github.com/eddardstark687-rgb/live-scores/releases/download/v0.1/LiveScores.apk
+
 ## 🌟 Features
 
 - **Personalized Match Center**: Quick access to your favorite teams and their next fixtures.
