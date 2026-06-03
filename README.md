@@ -10,7 +10,7 @@
 ---
 
 ## ⬇️Download the App here 👇
-https://github.com/eddardstark687-rgb/live-scores/releases/download/v0.1/LiveScores.apk
+https://github.com/eddardstark687-rgb/live-scores/releases/download/v1.1/app-release.apk
 
 ## 🌟 Features
 
