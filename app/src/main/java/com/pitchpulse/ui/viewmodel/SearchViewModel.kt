@@ -14,7 +14,7 @@ import kotlinx.coroutines.launch
 import kotlin.OptIn
 
 sealed class SearchUiState {
-    object Initial : SearchUiState()
+    data class Initial(val suggestions: List<TeamDto>, val favoriteIds: Set<Int>) : SearchUiState()
     object Loading : SearchUiState()
     data class Success(val teams: List<TeamDto>, val favoriteIds: Set<Int>) : SearchUiState()
     data class Error(val message: String) : SearchUiState()
@@ -33,13 +33,16 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
     val searchText: StateFlow<String> = _searchText.asStateFlow()
 
     private val _favoriteIds = MutableStateFlow<Set<Int>>(emptySet())
+    private val _suggestions = MutableStateFlow<List<TeamDto>>(emptyList())
 
     @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
     val uiState: StateFlow<SearchUiState> = _searchText
         .debounce(300)
         .flatMapLatest { query ->
             if (query.isBlank()) {
-                flowOf<SearchUiState>(SearchUiState.Initial)
+                _suggestions.map { suggestions ->
+                    SearchUiState.Initial(suggestions, _favoriteIds.value)
+                }
             } else {
                 flow<SearchUiState> {
                     emit(SearchUiState.Loading)
@@ -53,20 +56,21 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
             }
         }
         .combine(_favoriteIds) { state, favorites ->
-            if (state is SearchUiState.Success) {
-                state.copy(favoriteIds = favorites)
-            } else {
-                state
+            when (state) {
+                is SearchUiState.Success -> state.copy(favoriteIds = favorites)
+                is SearchUiState.Initial -> state.copy(favoriteIds = favorites)
+                else -> state
             }
         }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
-            initialValue = SearchUiState.Initial
+            initialValue = SearchUiState.Initial(emptyList(), emptySet())
         )
 
     init {
         observeFavorites()
+        loadSuggestions()
     }
 
     private fun observeFavorites() {
@@ -74,6 +78,12 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
             repository.getFavoriteTeams().collect { favorites ->
                 _favoriteIds.value = favorites.map { it.teamId }.toSet()
             }
+        }
+    }
+
+    private fun loadSuggestions() {
+        viewModelScope.launch {
+            _suggestions.value = repository.getSuggestedTeams()
         }
     }
 

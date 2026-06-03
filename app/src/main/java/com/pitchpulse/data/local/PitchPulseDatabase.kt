@@ -13,6 +13,7 @@ import com.pitchpulse.data.local.entity.TeamDetailsEntity
 import com.pitchpulse.data.local.entity.LineupEntity
 import com.pitchpulse.data.local.entity.StatisticEntity
 import com.pitchpulse.data.local.entity.ApiUsageEntity
+import com.pitchpulse.data.local.entity.SuggestedTeamEntity
 import androidx.room.TypeConverters
 
 @Database(
@@ -23,9 +24,10 @@ import androidx.room.TypeConverters
         TeamDetailsEntity::class,
         LineupEntity::class,
         StatisticEntity::class,
-        ApiUsageEntity::class
+        ApiUsageEntity::class,
+        SuggestedTeamEntity::class
     ],
-    version = 8,
+    version = 9,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

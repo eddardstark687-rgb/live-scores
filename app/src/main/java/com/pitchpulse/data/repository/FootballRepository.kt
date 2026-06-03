@@ -17,6 +17,7 @@ import com.pitchpulse.data.remote.dto.StatisticDto
 import com.pitchpulse.data.local.entity.LineupEntity
 import com.pitchpulse.data.local.entity.StatisticEntity
 import com.pitchpulse.data.local.entity.ApiUsageEntity
+import com.pitchpulse.data.local.entity.SuggestedTeamEntity
 import com.pitchpulse.data.remote.dto.TeamDto
 import com.pitchpulse.data.remote.dto.toDomain
 import com.pitchpulse.data.remote.dto.toDomainItems
@@ -560,6 +561,64 @@ class FootballRepository(
             throw e
         } catch (e: Exception) {
             Log.e(TAG, "Fatal Search Exception: ${e.message}", e)
+            emptyList()
+        }
+    }
+
+    suspend fun getSuggestedTeams(): List<TeamDto> = withContext(Dispatchers.IO) {
+        try {
+            val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+            val today = dateFormat.format(Date())
+
+            val cachedSuggestions = dao.getSuggestedTeams(today)
+            if (cachedSuggestions.isNotEmpty()) {
+                return@withContext cachedSuggestions.map {
+                    TeamDto(id = it.teamId, name = it.name, logo = it.logo, country = null)
+                }
+            }
+
+            // Clear any old suggestions
+            dao.clearOldSuggestedTeams(today)
+
+            val curatedList = listOf(
+                TeamDto(id = 50, name = "Manchester City", logo = "https://media.api-sports.io/football/teams/50.png"),
+                TeamDto(id = 42, name = "Arsenal", logo = "https://media.api-sports.io/football/teams/42.png"),
+                TeamDto(id = 40, name = "Liverpool", logo = "https://media.api-sports.io/football/teams/40.png"),
+                TeamDto(id = 33, name = "Manchester United", logo = "https://media.api-sports.io/football/teams/33.png"),
+                TeamDto(id = 49, name = "Chelsea", logo = "https://media.api-sports.io/football/teams/49.png"),
+                TeamDto(id = 47, name = "Tottenham", logo = "https://media.api-sports.io/football/teams/47.png"),
+                TeamDto(id = 541, name = "Real Madrid", logo = "https://media.api-sports.io/football/teams/541.png"),
+                TeamDto(id = 529, name = "Barcelona", logo = "https://media.api-sports.io/football/teams/529.png"),
+                TeamDto(id = 530, name = "Atlético Madrid", logo = "https://media.api-sports.io/football/teams/530.png"),
+                TeamDto(id = 157, name = "Bayern Munich", logo = "https://media.api-sports.io/football/teams/157.png"),
+                TeamDto(id = 165, name = "Borussia Dortmund", logo = "https://media.api-sports.io/football/teams/165.png"),
+                TeamDto(id = 168, name = "Bayer Leverkusen", logo = "https://media.api-sports.io/football/teams/168.png"),
+                TeamDto(id = 85, name = "Paris Saint-Germain", logo = "https://media.api-sports.io/football/teams/85.png"),
+                TeamDto(id = 496, name = "Juventus", logo = "https://media.api-sports.io/football/teams/496.png"),
+                TeamDto(id = 489, name = "AC Milan", logo = "https://media.api-sports.io/football/teams/489.png"),
+                TeamDto(id = 505, name = "Inter Milan", logo = "https://media.api-sports.io/football/teams/505.png"),
+                TeamDto(id = 492, name = "Napoli", logo = "https://media.api-sports.io/football/teams/492.png"),
+                // International Teams
+                TeamDto(id = 1, name = "Belgium", logo = "https://media.api-sports.io/football/teams/1.png"),
+                TeamDto(id = 2, name = "France", logo = "https://media.api-sports.io/football/teams/2.png"),
+                TeamDto(id = 9, name = "Spain", logo = "https://media.api-sports.io/football/teams/9.png"),
+                TeamDto(id = 10, name = "England", logo = "https://media.api-sports.io/football/teams/10.png"),
+                TeamDto(id = 6, name = "Brazil", logo = "https://media.api-sports.io/football/teams/6.png"),
+                TeamDto(id = 26, name = "Argentina", logo = "https://media.api-sports.io/football/teams/26.png"),
+                TeamDto(id = 27, name = "Portugal", logo = "https://media.api-sports.io/football/teams/27.png"),
+                TeamDto(id = 25, name = "Germany", logo = "https://media.api-sports.io/football/teams/25.png")
+            )
+
+            val dailySuggestions = curatedList.shuffled().take((10..15).random())
+
+            val entities = dailySuggestions.map {
+                SuggestedTeamEntity(it.id, it.name, it.logo ?: "", today)
+            }
+            dao.insertSuggestedTeams(entities)
+
+            dailySuggestions
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to get suggested teams: ${e.message}", e)
             emptyList()
         }
     }

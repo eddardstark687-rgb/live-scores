@@ -10,6 +10,7 @@ import com.pitchpulse.data.local.entity.TeamDetailsEntity
 import com.pitchpulse.data.local.entity.LineupEntity
 import com.pitchpulse.data.local.entity.StatisticEntity
 import com.pitchpulse.data.local.entity.ApiUsageEntity
+import com.pitchpulse.data.local.entity.SuggestedTeamEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -96,4 +97,17 @@ interface FootballDao {
 
     @Query("SELECT * FROM matches WHERE homeTeamId = :teamId OR awayTeamId = :teamId ORDER BY dateString DESC")
     suspend fun getTeamFixtures(teamId: Int): List<MatchEntity>
+
+    @Query("SELECT * FROM matches ORDER BY dateString DESC LIMIT 100")
+    suspend fun getRecentMatches(): List<MatchEntity>
+
+    // Suggested Teams Caching
+    @Query("SELECT * FROM suggested_teams WHERE dateString = :date")
+    suspend fun getSuggestedTeams(date: String): List<SuggestedTeamEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertSuggestedTeams(teams: List<SuggestedTeamEntity>)
+
+    @Query("DELETE FROM suggested_teams WHERE dateString != :date")
+    suspend fun clearOldSuggestedTeams(date: String)
 }

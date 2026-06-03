@@ -3,12 +3,14 @@ package com.pitchpulse.ui.screens
 import androidx.compose.animation.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.BarChart
@@ -32,7 +34,11 @@ import com.pitchpulse.core.ui.Dimens
 import com.pitchpulse.ui.components.EmptyState
 import com.pitchpulse.ui.state.MatchDetailUiState
 import com.pitchpulse.ui.theme.AppAccent
+import com.pitchpulse.ui.theme.AppAccentMuted
+import com.pitchpulse.ui.theme.AppBackground
 import com.pitchpulse.ui.theme.TextPrimary
+import com.pitchpulse.ui.theme.TextSecondary
+import com.pitchpulse.ui.theme.TextMuted
 import com.pitchpulse.ui.viewmodel.MatchDetailViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -43,7 +49,6 @@ fun MatchDetailScreen(
     onTeamClick: (Int) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val scrollState = rememberScrollState()
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("Overview", "Lineups", "Stats")
 
@@ -77,15 +82,28 @@ fun MatchDetailScreen(
                 }
                 is MatchDetailUiState.Success -> {
                     Column(modifier = Modifier.fillMaxSize()) {
+                        // 1. Unified Scoreboard Card
+                        ScoreboardHeaderCard(
+                            match = state.match,
+                            onTeamClick = onTeamClick
+                        )
+
+                        // 2. Custom Tabs Row
                         TabRow(
                             selectedTabIndex = selectedTab,
                             containerColor = MaterialTheme.colorScheme.surface,
                             contentColor = AppAccent,
                             indicator = { tabPositions ->
                                 TabRowDefaults.SecondaryIndicator(
-                                    modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
+                                    modifier = Modifier
+                                        .tabIndicatorOffset(tabPositions[selectedTab])
+                                        .height(3.dp)
+                                        .clip(RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp)),
                                     color = AppAccent
                                 )
+                            },
+                            divider = {
+                                HorizontalDivider(color = Color(0xFF252E38))
                             }
                         ) {
                             tabs.forEachIndexed { index, title ->
@@ -95,13 +113,15 @@ fun MatchDetailScreen(
                                     text = { 
                                         Text(
                                             text = title,
-                                            fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal
+                                            fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal,
+                                            color = if (selectedTab == index) AppAccent else TextSecondary
                                         ) 
                                     }
                                 )
                             }
                         }
 
+                        // 3. Tab Content Section
                         Box(modifier = Modifier.fillMaxSize().padding(Dimens.SpacingLarge)) {
                             AnimatedContent(
                                 targetState = selectedTab,
@@ -140,89 +160,411 @@ fun MatchDetailScreen(
 }
 
 @Composable
+private fun ScoreboardHeaderCard(
+    match: com.pitchpulse.data.model.Match,
+    onTeamClick: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = Dimens.SpacingLarge, vertical = Dimens.SpacingMedium),
+        shape = RoundedCornerShape(Dimens.RadiusLarge),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ),
+        border = androidx.compose.foundation.BorderStroke(
+            width = 1.dp,
+            color = if (match.isLive) AppAccent else Color(0xFF252E38)
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(Dimens.SpacingLarge),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Competition & Date
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = match.competition.uppercase(),
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        letterSpacing = 1.5.sp,
+                        fontWeight = FontWeight.Bold
+                    ),
+                    color = AppAccent
+                )
+                if (match.date.isNotEmpty()) {
+                    Text(
+                        text = "  •  ${match.date}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = TextSecondary
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(Dimens.SpacingLarge))
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Home Team
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { onTeamClick(match.homeTeamId) },
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(Dimens.LogoSizeLarge)
+                            .background(
+                                color = MaterialTheme.colorScheme.surface,
+                                shape = CircleShape
+                            )
+                            .padding(8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        AsyncImage(
+                            model = match.homeTeamLogo,
+                            contentDescription = match.homeTeam,
+                            modifier = Modifier.size(Dimens.LogoSizeMedium)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(Dimens.SpacingMedium))
+                    Text(
+                        text = match.homeTeam,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary,
+                        maxLines = 1,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                }
+                
+                // Score & Status
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.padding(horizontal = Dimens.SpacingMedium)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        if (match.homeScore != null && match.awayScore != null) {
+                            Text(
+                                text = match.homeScore.toString(),
+                                style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold),
+                                color = TextPrimary
+                            )
+                            Text(
+                                text = " - ",
+                                style = MaterialTheme.typography.displaySmall.copy(
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = AppAccent
+                                ),
+                                modifier = Modifier.padding(horizontal = 4.dp)
+                            )
+                            Text(
+                                text = match.awayScore.toString(),
+                                style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold),
+                                color = TextPrimary
+                            )
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .background(
+                                        color = MaterialTheme.colorScheme.surface,
+                                        shape = RoundedCornerShape(Dimens.RadiusSmall)
+                                    )
+                                    .padding(horizontal = Dimens.SpacingLarge, vertical = Dimens.SpacingMedium)
+                            ) {
+                                Text(
+                                    text = "VS",
+                                    style = MaterialTheme.typography.titleLarge.copy(
+                                        fontWeight = FontWeight.ExtraBold,
+                                        letterSpacing = 1.sp
+                                    ),
+                                    color = TextSecondary
+                                )
+                            }
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(Dimens.SpacingSmall))
+                    
+                    // Status Badge
+                    if (match.isLive) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
+                            modifier = Modifier
+                                .background(
+                                    color = Color(0xFF1B3A2C),
+                                    shape = RoundedCornerShape(100.dp)
+                                )
+                                .padding(horizontal = Dimens.SpacingMedium, vertical = 4.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(6.dp)
+                                    .background(AppAccent, CircleShape)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = match.time,
+                                color = AppAccent,
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
+                            )
+                        }
+                    } else {
+                        Text(
+                            text = match.time,
+                            color = TextSecondary,
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                            modifier = Modifier
+                                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(100.dp))
+                                .padding(horizontal = Dimens.SpacingMedium, vertical = 4.dp)
+                        )
+                    }
+                }
+                
+                // Away Team
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { onTeamClick(match.awayTeamId) },
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(Dimens.LogoSizeLarge)
+                            .background(
+                                color = MaterialTheme.colorScheme.surface,
+                                shape = CircleShape
+                            )
+                            .padding(8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        AsyncImage(
+                            model = match.awayTeamLogo,
+                            contentDescription = match.awayTeam,
+                            modifier = Modifier.size(Dimens.LogoSizeMedium)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(Dimens.SpacingMedium))
+                    Text(
+                        text = match.awayTeam,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary,
+                        maxLines = 1,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun OverviewTab(
     match: com.pitchpulse.data.model.Match,
     onTeamClick: (Int) -> Unit
 ) {
-    Column(
+    LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally
+        contentPadding = PaddingValues(vertical = Dimens.SpacingMedium),
+        verticalArrangement = Arrangement.spacedBy(Dimens.SpacingLarge)
+    ) {
+        item {
+            MatchEventsTimeline(match = match)
+        }
+    }
+}
+
+@Composable
+private fun MatchEventsTimeline(
+    match: com.pitchpulse.data.model.Match,
+    modifier: Modifier = Modifier
+) {
+    val events = remember(match.events) {
+        match.events.sortedBy { it.minute }
+    }
+
+    if (events.isEmpty()) {
+        Box(
+            modifier = modifier
+                .fillMaxWidth()
+                .padding(vertical = Dimens.SpacingHuge),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(
+                    imageVector = Icons.Default.BarChart,
+                    contentDescription = null,
+                    tint = TextMuted,
+                    modifier = Modifier.size(48.dp)
+                )
+                Spacer(modifier = Modifier.height(Dimens.SpacingMedium))
+                Text(
+                    text = "No key events recorded yet",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextSecondary
+                )
+            }
+        }
+        return
+    }
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = Dimens.SpacingMedium)
     ) {
         Text(
-            text = if (match.date.isNotEmpty()) "${match.competition} • ${match.date}" else match.competition,
-            style = MaterialTheme.typography.labelLarge,
+            text = "MATCH TIMELINE",
+            style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 1.2.sp),
             color = AppAccent,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = Dimens.SpacingLarge)
         )
 
-        Spacer(modifier = Modifier.height(Dimens.SpacingExtraLarge))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            TeamDetail(match.homeTeam, match.homeTeamLogo) { onTeamClick(match.homeTeamId) }
+        events.forEachIndexed { index, event ->
+            val isHome = event.teamId == match.homeTeamId
             
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text = if (match.homeScore != null && match.awayScore != null) "${match.homeScore} - ${match.awayScore}" else "VS",
-                    style = MaterialTheme.typography.displayMedium.copy(
-                        fontWeight = FontWeight.ExtraBold,
-                        letterSpacing = 2.sp
-                    ),
-                    color = TextPrimary,
-                    modifier = Modifier.padding(horizontal = Dimens.SpacingMedium)
-                )
-                if (match.isLive) {
-                    com.pitchpulse.ui.components.LiveBadge()
-                } else {
-                    Text(
-                        text = match.time,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(IntrinsicSize.Min),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Left Side (Home)
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(end = Dimens.SpacingMedium),
+                    contentAlignment = Alignment.CenterEnd
+                ) {
+                    if (isHome) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.End
+                        ) {
+                            Text(
+                                text = event.player,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = TextPrimary
+                            )
+                            Spacer(modifier = Modifier.width(Dimens.SpacingSmall))
+                            EventIcon(event.type)
+                        }
+                    }
+                }
+
+                // Middle Column (Timeline Connector & Time Badge)
+                Column(
+                    modifier = Modifier
+                        .width(54.dp)
+                        .fillMaxHeight(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    // Line above marker
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .width(2.dp)
+                            .background(
+                                if (index == 0) Color.Transparent else Color(0xFF252E38)
+                            )
+                    )
+
+                    // Minute Badge
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .background(
+                                color = MaterialTheme.colorScheme.surfaceVariant,
+                                shape = CircleShape
+                            )
+                            .border(
+                                width = 1.5.dp,
+                                color = if (event.type == com.pitchpulse.data.model.EventType.GOAL) AppAccent else Color(0xFF252E38),
+                                shape = CircleShape
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "${event.minute}'",
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                            color = if (event.type == com.pitchpulse.data.model.EventType.GOAL) AppAccent else TextSecondary
+                        )
+                    }
+
+                    // Line below marker
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .width(2.dp)
+                            .background(
+                                if (index == events.lastIndex) Color.Transparent else Color(0xFF252E38)
+                            )
                     )
                 }
-            }
 
-            TeamDetail(match.awayTeam, match.awayTeamLogo) { onTeamClick(match.awayTeamId) }
+                // Right Side (Away)
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(start = Dimens.SpacingMedium),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    if (!isHome) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Start
+                        ) {
+                            EventIcon(event.type)
+                            Spacer(modifier = Modifier.width(Dimens.SpacingSmall))
+                            Text(
+                                text = event.player,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = TextPrimary
+                            )
+                        }
+                    }
+                }
+            }
         }
+    }
+}
 
-        Spacer(modifier = Modifier.height(Dimens.SpacingExtraLarge))
-
-        // Goal Scorers Section
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = Dimens.SpacingLarge),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            // Home Scorers
-            Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.Start) {
-                match.events.filter { it.type == com.pitchpulse.data.model.EventType.GOAL && it.teamId == match.homeTeamId }
-                    .forEach { event ->
-                        Text(
-                            text = "${event.player} ${event.minute}'",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = TextPrimary.copy(alpha = 0.8f)
-                        )
-                    }
-            }
-
-            Spacer(modifier = Modifier.width(Dimens.SpacingMedium))
-
-            // Away Scorers
-            Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.End) {
-                match.events.filter { it.type == com.pitchpulse.data.model.EventType.GOAL && it.teamId == match.awayTeamId }
-                    .forEach { event ->
-                        Text(
-                            text = "${event.minute}' ${event.player}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = TextPrimary.copy(alpha = 0.8f)
-                        )
-                    }
-            }
+@Composable
+private fun EventIcon(type: com.pitchpulse.data.model.EventType) {
+    when (type) {
+        com.pitchpulse.data.model.EventType.GOAL -> {
+            Text("⚽", fontSize = 14.sp)
+        }
+        com.pitchpulse.data.model.EventType.YELLOW_CARD -> {
+            Box(
+                modifier = Modifier
+                    .size(width = 10.dp, height = 14.dp)
+                    .background(Color(0xFFFFD54F), RoundedCornerShape(2.dp))
+            )
+        }
+        com.pitchpulse.data.model.EventType.RED_CARD -> {
+            Box(
+                modifier = Modifier
+                    .size(width = 10.dp, height = 14.dp)
+                    .background(Color(0xFFE53935), RoundedCornerShape(2.dp))
+            )
         }
     }
 }
@@ -238,39 +580,361 @@ private fun LineupsTab(lineups: List<com.pitchpulse.data.model.Lineup>) {
         return
     }
 
-    LazyColumn(modifier = Modifier.fillMaxSize()) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(Dimens.SpacingLarge)
+    ) {
         item {
             PitchVisualization(lineups)
-            Spacer(modifier = Modifier.height(Dimens.SpacingExtraLarge))
         }
 
-        items(lineups) { lineup ->
+        items(lineups.size) { index ->
+            val lineup = lineups[index]
+            val isHome = index == 0
+            TeamSquadCard(lineup = lineup, isHome = isHome)
+        }
+    }
+}
+
+@Composable
+private fun PitchVisualization(lineups: List<com.pitchpulse.data.model.Lineup>) {
+    if (lineups.isEmpty()) return
+
+    val coachPitchColor = Color(0xFF0D3310)
+    val lineColor = Color(0xFF245928)
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(380.dp)
+            .clip(androidx.compose.foundation.shape.RoundedCornerShape(Dimens.RadiusMedium))
+            .background(coachPitchColor)
+            .padding(8.dp)
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val w = size.width
+            val h = size.height
+
+            // Outer boundary
+            drawRect(color = lineColor, style = Stroke(width = 1.5.dp.toPx()))
+
+            // Center line
+            drawLine(
+                color = lineColor,
+                start = Offset(0f, h / 2),
+                end = Offset(w, h / 2),
+                strokeWidth = 1.5.dp.toPx()
+            )
+
+            // Center circle
+            drawCircle(
+                color = lineColor,
+                center = Offset(w / 2, h / 2),
+                radius = 35.dp.toPx(),
+                style = Stroke(width = 1.5.dp.toPx())
+            )
+
+            // Penalty areas
+            // Top (Away)
+            drawRect(
+                color = lineColor,
+                topLeft = Offset(w * 0.2f, 0f),
+                size = Size(w * 0.6f, h * 0.15f),
+                style = Stroke(width = 1.5.dp.toPx())
+            )
+            // Bottom (Home)
+            drawRect(
+                color = lineColor,
+                topLeft = Offset(w * 0.2f, h * 0.85f),
+                size = Size(w * 0.6f, h * 0.15f),
+                style = Stroke(width = 1.5.dp.toPx())
+            )
+            
+            // Goal areas
+            // Top
+            drawRect(
+                color = lineColor,
+                topLeft = Offset(w * 0.35f, 0f),
+                size = Size(w * 0.3f, h * 0.05f),
+                style = Stroke(width = 1.5.dp.toPx())
+            )
+            // Bottom
+            drawRect(
+                color = lineColor,
+                topLeft = Offset(w * 0.35f, h * 0.95f),
+                size = Size(w * 0.3f, h * 0.05f),
+                style = Stroke(width = 1.5.dp.toPx())
+            )
+        }
+
+        // Home Team (Bottom half)
+        lineups.firstOrNull()?.let { homeLineup ->
+            TeamOnPitch(homeLineup, isHome = true)
+        }
+
+        // Away Team (Top half)
+        if (lineups.size > 1) {
+            TeamOnPitch(lineups[1], isHome = false)
+        }
+    }
+}
+
+private data class ParsedPlayer(
+    val player: com.pitchpulse.data.model.LineupPlayer,
+    val row: Int,
+    val col: Int
+)
+
+@Composable
+private fun BoxScope.TeamOnPitch(
+    lineup: com.pitchpulse.data.model.Lineup,
+    isHome: Boolean
+) {
+    val parsedPlayers = remember(lineup.startXI) {
+        lineup.startXI.mapNotNull { player ->
+            val grid = player.grid ?: return@mapNotNull null
+            val parts = grid.split(":")
+            if (parts.size < 2) return@mapNotNull null
+            val row = parts[0].toIntOrNull() ?: return@mapNotNull null
+            val col = parts[1].toIntOrNull() ?: return@mapNotNull null
+            ParsedPlayer(player, row, col)
+        }
+    }
+
+    val playersByRow = remember(parsedPlayers) {
+        parsedPlayers.groupBy { it.row }
+    }
+
+    playersByRow.forEach { (row, rowPlayers) ->
+        val sortedRowPlayers = remember(rowPlayers) {
+            rowPlayers.sortedBy { it.col }
+        }
+        val n = sortedRowPlayers.size
+        
+        sortedRowPlayers.forEachIndexed { colIndex, parsed ->
+            val xPos = (colIndex + 1).toFloat() / (n + 1).toFloat()
+            val yPos = if (isHome) {
+                0.90f - (row - 1) * 0.09f
+            } else {
+                0.10f + (row - 1) * 0.09f
+            }
+
+            PlayerOnPitch(
+                number = parsed.player.number?.toString() ?: "",
+                name = parsed.player.name.split(" ").last(),
+                isHome = isHome,
+                biasX = xPos,
+                biasY = yPos
+            )
+        }
+    }
+}
+
+@Composable
+private fun PlayerOnPitch(
+    number: String,
+    name: String,
+    isHome: Boolean,
+    biasX: Float,
+    biasY: Float
+) {
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val posX = maxWidth * biasX
+        val posY = maxHeight * biasY
+
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.offset(x = posX - 24.dp, y = posY - 20.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .clip(CircleShape)
+                    .background(if (isHome) AppAccent else Color.White)
+                    .border(1.dp, AppBackground, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = number,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Black
+                )
+            }
+            Spacer(modifier = Modifier.height(2.dp))
             Text(
-                text = "${lineup.teamName} (${lineup.formation ?: ""})",
-                style = MaterialTheme.typography.titleMedium,
+                text = name,
+                fontSize = 9.sp,
+                color = Color.White,
                 fontWeight = FontWeight.Bold,
-                color = AppAccent,
-                modifier = Modifier.padding(vertical = Dimens.SpacingMedium)
+                maxLines = 1,
+                modifier = Modifier
+                    .background(AppBackground, RoundedCornerShape(4.dp))
+                    .padding(horizontal = 4.dp, vertical = 2.dp)
             )
-            
-            Text(
-                text = "Starting XI",
-                style = MaterialTheme.typography.labelMedium,
-                color = TextPrimary.copy(alpha = 0.6f)
-            )
-            
-            lineup.startXI.forEach { player ->
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
+        }
+    }
+}
+
+@Composable
+private fun TeamSquadCard(
+    lineup: com.pitchpulse.data.model.Lineup,
+    isHome: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = Dimens.SpacingMedium),
+        shape = RoundedCornerShape(Dimens.RadiusMedium),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ),
+        border = androidx.compose.foundation.BorderStroke(
+            width = 1.dp,
+            color = Color(0xFF252E38)
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(Dimens.SpacingLarge)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .background(MaterialTheme.colorScheme.surface, CircleShape)
+                        .padding(4.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Text(text = "${player.number ?: ""} ${player.name}", style = MaterialTheme.typography.bodyMedium)
-                    Text(text = player.position ?: "", style = MaterialTheme.typography.bodySmall, color = TextPrimary.copy(alpha = 0.4f))
+                    AsyncImage(
+                        model = lineup.teamLogo,
+                        contentDescription = lineup.teamName,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(Dimens.SpacingMedium))
+                Column {
+                    Text(
+                        text = lineup.teamName,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary
+                    )
+                    if (lineup.formation != null) {
+                        Text(
+                            text = "Formation: ${lineup.formation}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = AppAccent,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
-            
+
             Spacer(modifier = Modifier.height(Dimens.SpacingLarge))
+
+            Text(
+                text = "STARTING XI",
+                style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 1.sp),
+                color = TextSecondary,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = Dimens.SpacingSmall)
+            )
+
+            lineup.startXI.forEach { player ->
+                PlayerRow(player = player, badgeColor = if (isHome) AppAccent else Color.White)
+            }
+
+            if (lineup.substitutes.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(Dimens.SpacingLarge))
+                
+                Text(
+                    text = "SUBSTITUTES",
+                    style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 1.sp),
+                    color = TextSecondary,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = Dimens.SpacingSmall)
+                )
+
+                lineup.substitutes.forEach { player ->
+                    PlayerRow(
+                        player = player,
+                        badgeColor = if (isHome) AppAccentMuted else Color(0xFFB0BEC5)
+                    )
+                }
+            }
+
+            if (!lineup.coachName.isNullOrEmpty()) {
+                Spacer(modifier = Modifier.height(Dimens.SpacingLarge))
+                HorizontalDivider(color = Color(0xFF252E38))
+                Spacer(modifier = Modifier.height(Dimens.SpacingMedium))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Groups,
+                        contentDescription = "Coach",
+                        tint = AppAccent,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(Dimens.SpacingMedium))
+                    Text(
+                        text = "Coach: ${lineup.coachName}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = TextPrimary
+                    )
+                }
+            }
         }
+    }
+}
+
+@Composable
+private fun PlayerRow(
+    player: com.pitchpulse.data.model.LineupPlayer,
+    badgeColor: Color
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .background(badgeColor, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = player.number?.toString() ?: "-",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Black
+                )
+            }
+            Spacer(modifier = Modifier.width(Dimens.SpacingMedium))
+            Text(
+                text = player.name,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = TextPrimary
+            )
+        }
+        Text(
+            text = player.position ?: "",
+            style = MaterialTheme.typography.bodySmall,
+            color = TextSecondary
+        )
     }
 }
 
@@ -289,29 +953,33 @@ private fun StatsTab(stats: com.pitchpulse.data.model.MatchStatistics?) {
     val featuredStats = stats.homeStats.zip(stats.awayStats).filter { it.first.type in priorityStats }
     val remainingStats = stats.homeStats.zip(stats.awayStats).filter { it.first.type !in priorityStats }
 
-    LazyColumn(modifier = Modifier.fillMaxSize()) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(Dimens.SpacingSmall)
+    ) {
         if (featuredStats.isNotEmpty()) {
             item {
                 Text(
-                    text = "Match Analytics",
-                    style = MaterialTheme.typography.titleSmall,
+                    text = "MATCH ANALYTICS",
+                    style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 1.2.sp),
                     color = AppAccent,
-                    modifier = Modifier.padding(bottom = Dimens.SpacingMedium)
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(vertical = Dimens.SpacingMedium)
                 )
             }
             items(featuredStats) { (home, away) ->
                 StatRow(type = home.type, homeValue = home.value, awayValue = away.value, isFeatured = true)
             }
-            item { Spacer(modifier = Modifier.height(Dimens.SpacingLarge)) }
         }
 
         if (remainingStats.isNotEmpty()) {
             item {
                 Text(
-                    text = "General Stats",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = TextPrimary.copy(alpha = 0.6f),
-                    modifier = Modifier.padding(bottom = Dimens.SpacingMedium)
+                    text = "GENERAL STATS",
+                    style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 1.2.sp),
+                    color = TextSecondary,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(top = Dimens.SpacingLarge, bottom = Dimens.SpacingMedium)
                 )
             }
             items(remainingStats) { (home, away) ->
@@ -323,208 +991,102 @@ private fun StatsTab(stats: com.pitchpulse.data.model.MatchStatistics?) {
 
 @Composable
 private fun StatRow(type: String, homeValue: String, awayValue: String, isFeatured: Boolean) {
-    Column(modifier = Modifier.fillMaxWidth().padding(vertical = if (isFeatured) Dimens.SpacingMedium else Dimens.SpacingSmall)) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = Dimens.SpacingSmall)
+            .background(
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                shape = RoundedCornerShape(Dimens.RadiusSmall)
+            )
+            .padding(horizontal = Dimens.SpacingLarge, vertical = Dimens.SpacingMedium)
+    ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = homeValue,
-                style = if (isFeatured) MaterialTheme.typography.bodyLarge else MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold
+                style = if (isFeatured) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                color = if (isFeatured) AppAccent else TextPrimary
             )
             Text(
-                text = type,
-                style = MaterialTheme.typography.labelSmall,
-                color = TextPrimary.copy(alpha = 0.6f)
+                text = type.uppercase(),
+                style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.sp),
+                color = TextSecondary,
+                fontWeight = FontWeight.Bold
             )
             Text(
                 text = awayValue,
-                style = if (isFeatured) MaterialTheme.typography.bodyLarge else MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold
+                style = if (isFeatured) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                color = if (isFeatured) Color.White else TextPrimary
             )
         }
         
-        LinearProgressIndicator(
-            progress = {
-                val homeVal = homeValue.replace("%", "").toFloatOrNull() ?: 0f
-                val awayVal = awayValue.replace("%", "").toFloatOrNull() ?: 0f
-                val total = homeVal + awayVal
-                if (total == 0f) 0.5f else homeVal / total
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(if (isFeatured) 6.dp else 3.dp)
-                .padding(top = Dimens.SpacingSmall)
-                .clip(CircleShape),
-            color = AppAccent,
-            trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
+        Spacer(modifier = Modifier.height(Dimens.SpacingSmall))
+
+        CustomComparativeProgress(
+            homeValue = homeValue,
+            awayValue = awayValue,
+            modifier = Modifier.fillMaxWidth()
         )
     }
 }
 
 @Composable
-private fun PitchVisualization(lineups: List<com.pitchpulse.data.model.Lineup>) {
-    if (lineups.isEmpty()) return
+private fun CustomComparativeProgress(
+    homeValue: String,
+    awayValue: String,
+    modifier: Modifier = Modifier
+) {
+    val homeVal = homeValue.replace("%", "").toFloatOrNull() ?: 0f
+    val awayVal = awayValue.replace("%", "").toFloatOrNull() ?: 0f
+    val total = homeVal + awayVal
+    
+    val homeRatio = if (total == 0f) 0.5f else homeVal / total
+    val awayRatio = if (total == 0f) 0.5f else awayVal / total
 
-    val coachPitchColor = Color(0xFF1B5E20)
-    val lineColor = Color.White.copy(alpha = 0.3f)
+    val trackColor = Color(0xFF252E38)
+    val homeColor = AppAccent
+    val awayColor = Color.White
 
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .height(300.dp)
-            .clip(androidx.compose.foundation.shape.RoundedCornerShape(Dimens.RadiusMedium))
-            .background(coachPitchColor)
-            .padding(8.dp)
+            .height(8.dp)
+            .clip(CircleShape)
+            .background(trackColor)
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             val w = size.width
             val h = size.height
+            
+            // Home segment
+            val homeWidth = w * homeRatio
+            drawRect(
+                color = homeColor,
+                topLeft = Offset(0f, 0f),
+                size = Size(homeWidth, h)
+            )
 
-            // Outer boundary
-            drawRect(color = lineColor, style = Stroke(width = 2.dp.toPx()))
+            // Away segment
+            val awayWidth = w * awayRatio
+            drawRect(
+                color = awayColor,
+                topLeft = Offset(w - awayWidth, 0f),
+                size = Size(awayWidth, h)
+            )
 
-            // Center line
+            // Center separator line (using solid background color to keep zero transparency strategy)
             drawLine(
-                color = lineColor,
-                start = Offset(0f, h / 2),
-                end = Offset(w, h / 2),
+                color = AppBackground,
+                start = Offset(w / 2, 0f),
+                end = Offset(w / 2, h),
                 strokeWidth = 2.dp.toPx()
             )
-
-            // Center circle
-            drawCircle(
-                color = lineColor,
-                center = Offset(w / 2, h / 2),
-                radius = 40.dp.toPx(),
-                style = Stroke(width = 2.dp.toPx())
-            )
-
-            // Penalty areas
-            // Top
-            drawRect(
-                color = lineColor,
-                topLeft = Offset(w * 0.2f, 0f),
-                size = Size(w * 0.6f, h * 0.15f),
-                style = Stroke(width = 2.dp.toPx())
-            )
-            // Bottom
-            drawRect(
-                color = lineColor,
-                topLeft = Offset(w * 0.2f, h * 0.85f),
-                size = Size(w * 0.6f, h * 0.15f),
-                style = Stroke(width = 2.dp.toPx())
-            )
         }
-
-        // Home Team Players (Top half, but API grid is usually 1-5 from top)
-        // Note: api-football grid is Y:X or similar. 1:1 is Goalkeeper.
-        // We will simplify: Y coordinate is the row.
-        lineups.firstOrNull()?.let { homeLineup ->
-            TeamOnPitch(homeLineup.startXI, isHome = true)
-        }
-    }
-}
-
-@Composable
-private fun BoxScope.TeamOnPitch(players: List<com.pitchpulse.data.model.LineupPlayer>, isHome: Boolean) {
-    players.forEach { player ->
-        val grid = player.grid ?: return@forEach
-        val coords = grid.split(":")
-        if (coords.size < 2) return@forEach
-
-        val row = coords[0].toIntOrNull() ?: 0
-        val col = coords[1].toIntOrNull() ?: 0
-
-        // Map grid to % position
-        // Rows: 1 (GK) to ~5 (FWD)
-        // Cols: 1 to X
-        val xPos = when (col) {
-            1 -> 0.5f
-            2 -> 0.3f
-            3 -> 0.7f
-            4 -> 0.15f
-            5 -> 0.85f
-            else -> 0.5f
-        }
-        
-        // Adjust for home/away side
-        val yPos = if (isHome) {
-            (row - 1) * 0.18f + 0.05f
-        } else {
-            0.95f - (row - 1) * 0.18f
-        }
-
-        PlayerOnPitch(
-            number = player.number?.toString() ?: "",
-            name = player.name.split(" ").last(),
-            modifier = Modifier.align(Alignment.TopCenter),
-            biasX = xPos,
-            biasY = yPos
-        )
-    }
-}
-
-@Composable
-private fun PlayerOnPitch(number: String, name: String, modifier: Modifier, biasX: Float, biasY: Float) {
-    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-        val posX = maxWidth * biasX
-        val posY = maxHeight * biasY
-
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.offset(x = posX - 20.dp, y = posY - 20.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(24.dp)
-                    .clip(CircleShape)
-                    .background(Color.White),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = number,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.Black
-                )
-            }
-            Text(
-                text = name,
-                fontSize = 8.sp,
-                color = Color.White,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1
-            )
-        }
-    }
-}
-
-@Composable
-private fun TeamDetail(
-    name: String,
-    logoUrl: String?,
-    onClick: () -> Unit
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
-            .width(100.dp)
-            .clickable { onClick() }
-    ) {
-        AsyncImage(
-            model = logoUrl,
-            contentDescription = name,
-            modifier = Modifier.size(80.dp)
-        )
-        Spacer(modifier = Modifier.height(Dimens.SpacingMedium))
-        Text(
-            text = name,
-            style = MaterialTheme.typography.titleSmall,
-            color = TextPrimary,
-            fontWeight = FontWeight.Bold,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center
-        )
     }
 }

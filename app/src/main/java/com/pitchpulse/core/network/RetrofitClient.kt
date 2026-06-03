@@ -27,11 +27,13 @@ object RetrofitClient {
 
     private var currentKeyIndex = 0
 
-    fun getActiveKey(): String = API_KEYS[currentKeyIndex]
+    fun getActiveKey(): String = if (API_KEYS.isNotEmpty()) API_KEYS[currentKeyIndex] else "MISSING_API_KEY"
     
     fun getActiveKeyIndex(): Int = currentKeyIndex
 
     fun rotateKey() {
+        if (API_KEYS.isEmpty()) return
+        
         if (currentKeyIndex < API_KEYS.size - 1) {
             currentKeyIndex++
             android.util.Log.w("RetrofitClient", "ROTATING API KEY to index $currentKeyIndex")

@@ -3,7 +3,7 @@
 ![Android](https://img.shields.io/badge/Platform-Android-brightgreen.svg)
 ![Kotlin](https://img.shields.io/badge/Language-Kotlin-blue.svg)
 ![Compose](https://img.shields.io/badge/UI-Jetpack%20Compose-orange.svg)
-![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)
+![License](https://img.shields.io/badge/License-GPL--3.0-lightgrey.svg)
 
 **Live Scores** is a production-grade Android application designed for elite football enthusiasts. It provides a focused, high-performance experience by strictly prioritizing top-tier European leagues and major international tournaments, stripping away the noise of minor global competitions.
 
@@ -14,6 +14,7 @@ https://github.com/eddardstark687-rgb/live-scores/releases/download/v0.1/LiveSco
 
 ## 🌟 Features
 
+- **Rich Home Screen**: League match counts for today, football quiz, daily quotes, and facts.
 - **Personalized Match Center**: Quick access to your favorite teams and their next fixtures.
 - **Global Match Feed**: Real-time scores from the Top 5 European leagues (PL, LaLiga, Serie A, etc.) and UEFA competitions.
 - **Smart Quota Management**: 
@@ -42,8 +43,25 @@ https://github.com/eddardstark687-rgb/live-scores/releases/download/v0.1/LiveSco
 ### 1. Prerequisites
 - Android Studio Panda 4.
 - An API Key from [API-Sports (Football)](https://dashboard.api-football.com/).
+- A Gemini API key from [Google AI Studio](https://aistudio.google.com/apikey) (optional; home screen uses bundled fallbacks without it).
 
-### 2. Build & Run
+### 2. Configuration
+Copy `local.properties.example` to `local.properties` in the project root and add your keys:
+
+```properties
+sdk.dir=/path/to/Android/Sdk
+API_KEY_PRIMARY=your_api_sports_primary_key
+API_KEY_BACKUP_1=your_api_sports_backup_key_1
+API_KEY_BACKUP_2=your_api_sports_backup_key_2
+GEMINI_API_KEY=your_gemini_api_key
+```
+
+- **API-Sports keys** power live scores and match sync.
+- **Gemini key** powers the home screen quiz, quotes, and facts (falls back to bundled content if missing).
+
+`local.properties` is gitignored — never commit API keys.
+
+### 3. Build & Run
 Clone the repository and build the project in Android Studio.
 
 ---
@@ -54,7 +72,7 @@ This app is designed with privacy in mind. It does not collect any personal info
 ---
 
 ## 📜 License
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the GPL-3.0 License - see the [LICENSE](LICENSE) file for details.
 
 ---
 

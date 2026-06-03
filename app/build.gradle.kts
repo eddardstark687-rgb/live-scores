@@ -17,6 +17,7 @@ if (localPropertiesFile.exists()) {
 val apiKeyPrimary = localProperties.getProperty("API_KEY_PRIMARY") ?: ""
 val apiKeyBackup1 = localProperties.getProperty("API_KEY_BACKUP_1") ?: ""
 val apiKeyBackup2 = localProperties.getProperty("API_KEY_BACKUP_2") ?: ""
+val geminiApiKey = localProperties.getProperty("GEMINI_API_KEY") ?: ""
 
 android {
     namespace = "com.pitchpulse"
@@ -34,6 +35,7 @@ android {
         buildConfigField("String", "API_KEY_PRIMARY", "\"$apiKeyPrimary\"")
         buildConfigField("String", "API_KEY_BACKUP_1", "\"$apiKeyBackup1\"")
         buildConfigField("String", "API_KEY_BACKUP_2", "\"$apiKeyBackup2\"")
+        buildConfigField("String", "GEMINI_API_KEY", "\"$geminiApiKey\"")
     }
 
     buildTypes {
