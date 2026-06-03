@@ -11,6 +11,7 @@ import com.pitchpulse.data.local.entity.LineupEntity
 import com.pitchpulse.data.local.entity.StatisticEntity
 import com.pitchpulse.data.local.entity.ApiUsageEntity
 import com.pitchpulse.data.local.entity.SuggestedTeamEntity
+import com.pitchpulse.data.local.entity.HomeDailyContentEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -110,4 +111,13 @@ interface FootballDao {
 
     @Query("DELETE FROM suggested_teams WHERE dateString != :date")
     suspend fun clearOldSuggestedTeams(date: String)
+
+    @Query("SELECT * FROM home_daily_content WHERE dateString = :date LIMIT 1")
+    suspend fun getHomeDailyContent(date: String): HomeDailyContentEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertHomeDailyContent(content: HomeDailyContentEntity)
+
+    @Query("DELETE FROM home_daily_content WHERE dateString != :date")
+    suspend fun clearOldHomeDailyContent(date: String)
 }

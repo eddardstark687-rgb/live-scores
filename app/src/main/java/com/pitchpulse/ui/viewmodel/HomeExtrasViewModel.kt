@@ -1,8 +1,10 @@
 package com.pitchpulse.ui.viewmodel
 
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.pitchpulse.core.util.DateObserver
 import com.pitchpulse.data.local.LiveScoresDatabase
 import com.pitchpulse.data.model.FootballQuote
 import com.pitchpulse.data.model.LeagueTodaySummary
@@ -14,6 +16,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
+private const val TAG = "HomeExtrasViewModel"
 
 data class HomeExtrasUiState(
     val leagueSummaries: List<LeagueTodaySummary> = emptyList(),
@@ -24,7 +31,8 @@ data class HomeExtrasUiState(
     val quote: FootballQuote? = null,
     val fact: String? = null,
     val isLoadingContent: Boolean = true,
-    val contentError: String? = null
+    val contentError: String? = null,
+    val contentDate: String? = null
 )
 
 class HomeExtrasViewModel(application: Application) : AndroidViewModel(application) {
@@ -32,6 +40,8 @@ class HomeExtrasViewModel(application: Application) : AndroidViewModel(applicati
     private val repository = HomeContentRepository(
         dao = LiveScoresDatabase.getInstance(application).dao
     )
+
+    private val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
 
     private val _uiState = MutableStateFlow(HomeExtrasUiState())
     val uiState: StateFlow<HomeExtrasUiState> = _uiState.asStateFlow()
@@ -49,7 +59,8 @@ class HomeExtrasViewModel(application: Application) : AndroidViewModel(applicati
             )
 
     init {
-        loadAiContent()
+        loadTodayContent()
+        observeMidnightRefresh()
         viewModelScope.launch {
             leagueSummaries.collect { leagues ->
                 _uiState.value = _uiState.value.copy(leagueSummaries = leagues)
@@ -57,11 +68,28 @@ class HomeExtrasViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
-    fun loadAiContent() {
+    private fun observeMidnightRefresh() {
         viewModelScope.launch {
+            DateObserver.dateFlow().collect { newDate ->
+                val current = _uiState.value.contentDate
+                if (current != null && current != newDate) {
+                    Log.d(TAG, "Date changed $current → $newDate, refreshing home content")
+                    loadTodayContent(forceRefresh = true)
+                }
+            }
+        }
+    }
+
+    fun loadTodayContent(forceRefresh: Boolean = false) {
+        viewModelScope.launch {
+            val today = dateFormat.format(Date())
+            if (!forceRefresh && _uiState.value.contentDate == today && _uiState.value.quote != null) {
+                return@launch
+            }
+
             _uiState.value = _uiState.value.copy(isLoadingContent = true, contentError = null)
             try {
-                val bundle = repository.fetchAiHomeContent()
+                val bundle = repository.getTodayHomeContent()
                 val pool = bundle.quizzes.ifEmpty { listOfNotNull(_uiState.value.currentQuiz) }
                 _uiState.value = _uiState.value.copy(
                     quizPool = pool,
@@ -70,6 +98,7 @@ class HomeExtrasViewModel(application: Application) : AndroidViewModel(applicati
                     selectedOptionIndex = null,
                     quote = bundle.quote,
                     fact = bundle.fact,
+                    contentDate = today,
                     isLoadingContent = false
                 )
             } catch (e: Exception) {
