@@ -46,15 +46,6 @@ https://github.com/eddardstark687-rgb/live-scores/releases/download/v1.1/app-rel
 - A Gemini API key from [Google AI Studio](https://aistudio.google.com/apikey) (optional; home screen uses bundled fallbacks without it).
 
 ### 2. Configuration
-Copy `local.properties.example` to `local.properties` in the project root and add your keys:
-
-```properties
-sdk.dir=/path/to/Android/Sdk
-API_KEY_PRIMARY=your_api_sports_primary_key
-API_KEY_BACKUP_1=your_api_sports_backup_key_1
-API_KEY_BACKUP_2=your_api_sports_backup_key_2
-GEMINI_API_KEY=your_gemini_api_key
-```
 
 - **API-Sports keys** power live scores and match sync.
 - **Gemini key** powers the home screen quiz, quotes, and facts (falls back to bundled content if missing).
